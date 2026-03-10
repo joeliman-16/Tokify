@@ -1,0 +1,102 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String?
+  email     String   @unique
+  password  String
+  image     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  shops     Shop[]
+
+  @@map("users")
+}
+
+model Shop {
+  id          String   @id @default(cuid())
+  name        String
+  category    String
+  logo        String?
+  upiId       String
+  phone       String
+  address     String
+  ownerId     String
+  qrCode      String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  products    Product[]
+  orders      Order[]
+
+  @@map("shops")
+}
+
+model Product {
+  id           String    @id @default(cuid())
+  name         String
+  description  String?
+  price        Float
+  image        String?
+  category     String
+  quantity     Int       @default(0)
+  isAvailable  Boolean   @default(true)
+  shopId       String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  shop         Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  orderItems   OrderItem[]
+
+  @@map("products")
+}
+
+model Order {
+  id            String        @id @default(cuid())
+  shopId        String
+  customerName  String
+  customerPhone String
+  totalAmount   Float
+  paymentStatus String        @default("pending")
+  paymentId     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  shop          Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  items         OrderItem[]
+  qrToken       OrderQRToken?
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Float
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("order_items")
+}
+
+model OrderQRToken {
+  id        String    @id @default(cuid())
+  orderId   String    @unique
+  token     String    @unique
+  isUsed    Boolean   @default(false)
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  order     Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("order_qr_tokens")
+}
