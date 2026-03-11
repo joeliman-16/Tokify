@@ -55,6 +55,25 @@ export default function DashboardLayout({
     fetchShopData()
   }, [session, status])
 
+  // Refetch shop data when returning from setup page
+  useEffect(() => {
+    const handleRouteChange = () => {
+      fetchShopData()
+    }
+    
+    // Listen for route changes
+    window.addEventListener('popstate', handleRouteChange)
+    
+    // Also check if we came from setup page
+    if (document.referrer.includes('/setup') || window.location.pathname === '/dashboard') {
+      handleRouteChange()
+    }
+    
+    return () => {
+      window.removeEventListener('popstate', handleRouteChange)
+    }
+  }, [])
+
   const fetchShopData = async () => {
     try {
       const response = await fetch('/api/shops')
@@ -70,7 +89,7 @@ export default function DashboardLayout({
           })
         } else {
           // No shop found, redirect to setup
-          router.push('/dashboard/setup')
+          router.replace('/dashboard/setup')
         }
       }
     } catch (error) {
@@ -90,12 +109,9 @@ export default function DashboardLayout({
     return null
   }
 
+  // Don't show loading if we're on the setup page - let setup page handle its own loading
   if (!shop) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-indigo-900 border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
+    return children
   }
 
   return (

@@ -36,7 +36,6 @@ export default function NewProductPage() {
     description: '',
     price: '',
     category: '',
-    quantity: '',
     image: ''
   })
   
@@ -102,7 +101,6 @@ export default function NewProductPage() {
         body: JSON.stringify({
           ...formData,
           price: parseFloat(formData.price),
-          quantity: parseInt(formData.quantity),
           image: imageUrl,
         }),
       })
@@ -111,10 +109,11 @@ export default function NewProductPage() {
         router.push('/dashboard/products')
       } else {
         const data = await response.json()
-        setError(data.error || 'Failed to create product')
+        setError(data.error || 'Failed: ' + response.status)
+        return
       }
-    } catch (error) {
-      setError('Something went wrong. Please try again.')
+    } catch (error: any) {
+      setError(error.message || JSON.stringify(error))
     } finally {
       setIsLoading(false)
     }
@@ -245,26 +244,6 @@ export default function NewProductPage() {
                   min="0"
                   className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-900 focus:border-transparent font-body"
                   placeholder="0.00"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Quantity */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2 font-body">
-                Quantity *
-              </label>
-              <div className="relative">
-                <Hash className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                <input
-                  type="number"
-                  name="quantity"
-                  value={formData.quantity}
-                  onChange={handleInputChange}
-                  min="0"
-                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-900 focus:border-transparent font-body"
-                  placeholder="0"
                   required
                 />
               </div>

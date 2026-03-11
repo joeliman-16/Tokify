@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
@@ -22,6 +22,8 @@ export default function ShopSetupPage() {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
   
+  console.log('Setup page rendering', { session, status })
+  
   const [formData, setFormData] = useState({
     name: '',
     category: '',
@@ -36,6 +38,14 @@ export default function ShopSetupPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
 
+  // Show form immediately, handle auth checks in background
+  useEffect(() => {
+    if (status === 'loading') return
+    if (!session) {
+      router.push('/auth/login')
+    }
+  }, [status, session, router])
+
   if (status === 'loading') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
@@ -45,8 +55,11 @@ export default function ShopSetupPage() {
   }
 
   if (!session) {
-    router.push('/auth/login')
-    return null
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-indigo-900 border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
   }
 
   const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -114,10 +127,11 @@ export default function ShopSetupPage() {
         router.push('/dashboard')
       } else {
         const data = await response.json()
-        setError(data.error || 'Failed to create shop')
+        setError(data.error || 'HTTP Error: ' + response.status)
+        return
       }
-    } catch (error) {
-      setError('Something went wrong. Please try again.')
+    } catch (error: any) {
+      setError(error.message || JSON.stringify(error))
     } finally {
       setIsLoading(false)
     }

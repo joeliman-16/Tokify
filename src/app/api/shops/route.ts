@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await auth()
     
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -54,24 +53,36 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  console.log('=== SHOPS API POST START ===')
+  
   try {
-    const session = await getServerSession(authOptions)
+    const session = await auth()
+    console.log('SESSION:', JSON.stringify(session, null, 2))
     
     if (!session?.user?.id) {
+      console.log('❌ NO USER ID IN SESSION')
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Not authenticated - session: ' + JSON.stringify(session) },
         { status: 401 }
       )
     }
 
-    const { name, category, logo, upiId, phone, address } = await request.json()
+    console.log('✅ USER ID FOUND:', session.user.id)
+
+    const body = await request.json()
+    console.log('REQUEST BODY:', JSON.stringify(body, null, 2))
+
+    const { name, category, logo, upiId, phone, address } = body
 
     if (!name || !category || !upiId || !phone || !address) {
+      console.log('❌ MISSING REQUIRED FIELDS')
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields', missing: { name, category, upiId, phone, address } },
         { status: 400 }
       )
     }
+
+    console.log('✅ ALL FIELDS VALID')
 
     // Check if user already has a shop
     const existingShop = await prisma.shop.findFirst({
@@ -81,13 +92,15 @@ export async function POST(request: NextRequest) {
     })
 
     if (existingShop) {
+      console.log('❌ USER ALREADY HAS SHOP:', existingShop.id)
       return NextResponse.json(
-        { error: 'You already have a shop' },
+        { error: 'You already have a shop', shopId: existingShop.id },
         { status: 400 }
       )
     }
 
-    // Create shop
+    console.log('✅ CREATING NEW SHOP...')
+
     const shop = await prisma.shop.create({
       data: {
         name,
@@ -102,11 +115,17 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    console.log('✅ SHOP CREATED SUCCESSFULLY:', shop.id)
+    console.log('=== SHOPS API POST END ===')
+    
     return NextResponse.json(shop, { status: 201 })
   } catch (error) {
-    console.error('Create shop error:', error)
+    console.error('❌ SHOP ERROR:', String(error))
+    console.error('❌ ERROR STACK:', error instanceof Error ? error.stack : 'No stack trace')
+    console.log('=== SHOPS API POST END ===')
+    
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: String(error) },
       { status: 500 }
     )
   }
