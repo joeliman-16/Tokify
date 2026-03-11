@@ -81,7 +81,7 @@ export default function ShopSetupPage() {
 
   const uploadLogo = async (file: File): Promise<string> => {
     const fileExt = file.name.split('.').pop()
-    const fileName = `${session.user.id}-${Date.now()}.${fileExt}`
+    const fileName = `${session.user?.id || 'unknown'}-${Date.now()}.${fileExt}`
     const filePath = `shop-logos/${fileName}`
 
     const { error: uploadError } = await supabase.storage

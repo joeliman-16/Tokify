@@ -1,10 +1,12 @@
 import NextAuth from 'next-auth'
+import { PrismaAdapter } from '@auth/prisma-adapter'
 import Credentials from 'next-auth/providers/credentials'
 import Google from 'next-auth/providers/google'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+const config = {
+  session: { strategy: 'jwt' as const },
   secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || 'tokify2024secretkey32charslong!!',
   pages: {
     signIn: '/auth/login',
@@ -19,18 +21,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         email: { label: 'Email', type: 'email' },
         password: { label: 'Password', type: 'password' },
       },
-      async authorize(credentials) {
+      async authorize(credentials: any) {
         if (!credentials?.email || !credentials?.password) return null
         try {
           const user = await prisma.user.findUnique({
-            where: { email: credentials.email as string },
+            where: { email: credentials.email }
           })
-          if (!user || !user.password) return null
+          
+          if (!user || !user.password) {
+            throw new Error('No user found with this email')
+          }
+
           const isValid = await bcrypt.compare(
-            credentials.password as string,
+            credentials.password,
             user.password
           )
-          if (!isValid) return null
+
+          if (!isValid) {
+            throw new Error('Invalid password')
+          }
+
           return {
             id: user.id,
             email: user.email,
@@ -45,7 +55,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async signIn({ user, account }) {
+    async signIn({ user, account }: any) {
       if (account?.provider === 'google') {
         try {
           const existing = await prisma.user.findUnique({
@@ -68,15 +78,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       }
       return true
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user }: any) {
       if (user) token.id = user.id
       return token
     },
-    async session({ session, token }) {
+    async session({ session, token }: any) {
       if (session.user && token.id) {
         session.user.id = token.id as string
       }
       return session
     },
   },
-})
+}
+
+export const { handlers, auth, signIn, signOut } = NextAuth(config)
