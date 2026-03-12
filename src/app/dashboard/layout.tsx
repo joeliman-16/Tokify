@@ -9,7 +9,7 @@ import {
   LayoutDashboard, 
   Package, 
   ShoppingCart, 
-  Scan, 
+  QrCode, 
   Settings, 
   Store,
   Plus,
@@ -25,7 +25,7 @@ const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Products', href: '/dashboard/products', icon: Package },
   { name: 'Orders', href: '/dashboard/orders', icon: ShoppingCart },
-  { name: 'Scanner', href: '/dashboard/scanner', icon: Scan },
+  { name: 'Scanner', href: '/dashboard/scanner', icon: QrCode },
   { name: 'QR Code', href: '/dashboard/qr', icon: Store },
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ]

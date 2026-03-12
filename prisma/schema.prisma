@@ -62,18 +62,19 @@ model Product {
 }
 
 model Order {
-  id            String        @id @default(cuid())
-  shopId        String
-  customerName  String
-  customerPhone String
-  totalAmount   Float
-  paymentStatus String        @default("pending")
-  paymentId     String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  shop          Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  items         OrderItem[]
-  qrToken       OrderQRToken?
+  id               String      @id @default(cuid())
+  shopId           String
+  shop             Shop        @relation(fields: [shopId], references: [id])
+  customerName     String?
+  customerPhone    String?
+  totalAmount      Float
+  paymentStatus    String      @default("PENDING")
+  paymentId        String?
+  upiTransactionNote String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  orderItems       OrderItem[]
+  orderQRTokens    OrderQRToken[]
 
   @@map("orders")
 }

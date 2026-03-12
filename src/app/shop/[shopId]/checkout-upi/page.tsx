@@ -21,7 +21,7 @@ export default function CheckoutPage({
   const [confirmLoading, setConfirmLoading] = useState(false)
   const [timeLeft, setTimeLeft] = useState(900) // 15 minutes
 
-  const total = items.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0)
+  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0)
 
   const handleCreateOrder = async () => {
     if (items.length === 0) return
@@ -245,35 +245,43 @@ export default function CheckoutPage({
 
               <p className="text-xs text-gray-400 text-center">
                 All buttons open your UPI app to complete payment
-              Payment
-            </h2>
-            
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-              <p className="text-orange-800 text-sm">
-                <strong>Test Payment Mode:</strong> This is a mock payment that will always succeed for testing purposes.
               </p>
             </div>
-          </div>
 
-          {/* Pay Button */}
-          <button
-            onClick={handlePayment}
-            disabled={isProcessing}
-            className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 text-white py-4 rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2"
-          >
-            {isProcessing ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>Processing Payment...</span>
-              </>
-            ) : (
-              <>
-                <CreditCard className="w-5 h-5" />
-                <span>Pay Now ₹{totalPrice.toFixed(2)}</span>
-              </>
+            {/* Instructions */}
+            <div className="bg-blue-50 rounded-2xl p-4 mb-4">
+              <h3 className="font-semibold text-blue-800 mb-2">📱 How to pay:</h3>
+              <ol className="text-sm text-blue-700 space-y-1">
+                <li>1. Click any UPI button above</li>
+                <li>2. Complete payment in your UPI app</li>
+                <li>3. Return to this page</li>
+                <li>4. Click "I Have Paid" below</li>
+              </ol>
+            </div>
+
+            {error && (
+              <div className="bg-red-50 text-red-600 p-3 rounded-xl mb-4">
+                {error}
+              </div>
             )}
-          </button>
-        </motion.div>
+
+            {/* Confirm button */}
+            <button
+              onClick={handleConfirmPayment}
+              disabled={confirmLoading || timeLeft === 0}
+              className="w-full bg-green-500 text-white py-4 rounded-2xl font-bold text-lg disabled:opacity-50 mb-3"
+            >
+              {confirmLoading ? 'Confirming...' : '✅ I Have Paid'}
+            </button>
+
+            <button
+              onClick={() => router.back()}
+              className="w-full border border-gray-300 text-gray-600 py-3 rounded-2xl"
+            >
+              Cancel
+            </button>
+          </>
+        )}
       </div>
     </div>
   )

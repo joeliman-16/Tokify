@@ -1,10 +1,12 @@
 import NextAuth from 'next-auth'
+import { PrismaAdapter } from '@auth/prisma-adapter'
 import Credentials from 'next-auth/providers/credentials'
 import Google from 'next-auth/providers/google'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  adapter: PrismaAdapter(prisma),
   session: { strategy: 'jwt' as const },
   secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || 'tokify2024secretkey32charslong!!',
   pages: {
