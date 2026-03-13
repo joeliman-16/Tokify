@@ -77,19 +77,19 @@ export default function CartDrawer({ isOpen, onClose, shopId, shopName }: CartDr
                   
                   <div className="flex-1">
                     <h4 className="font-medium text-gray-900">{item.name}</h4>
-                    <p className="text-orange-600 font-semibold">₹{item.price.toFixed(2)}</p>
+                    <p className="text-orange-600 font-semibold">₹{Number(item.price).toFixed(2)}</p>
                   </div>
 
                   <div className="flex items-center space-x-2">
                     <button
-                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                      onClick={() => updateQuantity(item.id, Number(item.quantity) - 1)}
                       className="w-8 h-8 rounded-full bg-white border border-gray-300 hover:bg-gray-100 flex items-center justify-center transition-colors"
                     >
                       <Minus className="w-4 h-4" />
                     </button>
-                    <span className="w-8 text-center font-medium">{item.quantity}</span>
+                    <span className="w-8 text-center font-medium">{Number(item.quantity)}</span>
                     <button
-                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                      onClick={() => updateQuantity(item.id, Number(item.quantity) + 1)}
                       className="w-8 h-8 rounded-full bg-orange-100 hover:bg-orange-200 flex items-center justify-center transition-colors"
                     >
                       <Plus className="w-4 h-4" />
@@ -97,7 +97,7 @@ export default function CartDrawer({ isOpen, onClose, shopId, shopName }: CartDr
                   </div>
 
                   <div className="text-right">
-                    <p className="font-semibold">₹{(item.price * item.quantity).toFixed(2)}</p>
+                    <p className="font-semibold">₹{(Number(item.price) * Number(item.quantity)).toFixed(2)}</p>
                     <button
                       onClick={() => removeItem(item.id)}
                       className="text-red-500 hover:text-red-700 transition-colors"
@@ -116,7 +116,7 @@ export default function CartDrawer({ isOpen, onClose, shopId, shopName }: CartDr
           <div className="border-t p-4 space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Subtotal ({items.length} items)</span>
-              <span className="text-xl font-bold text-orange-600">₹{totalPrice.toFixed(2)}</span>
+              <span className="text-xl font-bold text-orange-600">₹{typeof totalPrice === 'number' ? totalPrice.toFixed(2) : '0.00'}</span>
             </div>
             
             <div className="flex space-x-3">

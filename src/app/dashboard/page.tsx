@@ -1,320 +1,186 @@
 'use client'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { 
-  Package, 
-  ShoppingCart, 
-  TrendingUp, 
-  Users,
-  Plus,
-  Eye,
-  Clock,
-  CheckCircle,
-  XCircle,
-  Settings
-} from 'lucide-react'
-import Link from 'next/link'
+interface Stats {
+  totalOrders: number
+  totalRevenue: number
+  todayOrders: number
+  todayRevenue: number
+  pendingOrders: number
+  paidOrders: number
+  fulfilledOrders: number
+  recentOrders: any[]
+  topProducts: any[]
+}
 
 export default function DashboardPage() {
-  const [shop, setShop] = useState<any>(null)
-  const [stats, setStats] = useState({
-    totalProducts: 0,
-    totalOrders: 0,
-    activeShop: false,
-    recentOrders: []
-  })
-  const [isLoading, setIsLoading] = useState(true)
+  const [stats, setStats] = useState<Stats | null>(null)
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
 
   useEffect(() => {
-    fetchDashboardData()
+    fetch('/api/dashboard/stats')
+      .then(r => r.json())
+      .then(data => {
+        setStats(data)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
   }, [])
 
-  const fetchDashboardData = async () => {
-    try {
-      const response = await fetch('/api/shops')
-      if (response.ok) {
-        const shops = await response.json()
-        if (shops.length > 0) {
-          const userShop = shops[0]
-          setShop(userShop)
-          setStats({
-            totalProducts: userShop.products?.length || 0,
-            totalOrders: userShop.orders?.length || 0,
-            activeShop: userShop.isActive,
-            recentOrders: userShop.orders || []
-          })
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch dashboard data:', error)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const getPaymentStatusIcon = (status: string) => {
-    switch (status) {
-      case 'paid':
-        return <CheckCircle className="w-4 h-4 text-green-500" />
-      case 'pending':
-        return <Clock className="w-4 h-4 text-yellow-500" />
-      case 'failed':
-        return <XCircle className="w-4 h-4 text-red-500" />
-      default:
-        return <Clock className="w-4 h-4 text-gray-500" />
-    }
-  }
-
-  const getPaymentStatusColor = (status: string) => {
-    switch (status) {
-      case 'paid':
-        return 'text-green-600 bg-green-50'
-      case 'pending':
-        return 'text-yellow-600 bg-yellow-50'
-      case 'failed':
-        return 'text-red-600 bg-red-50'
-      default:
-        return 'text-gray-600 bg-gray-50'
-    }
-  }
-
-  if (isLoading) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-indigo-900 border-t-transparent rounded-full animate-spin" />
+      <div className="p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-8 bg-gray-200 rounded w-48"></div>
+          <div className="grid grid-cols-2 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="h-24 bg-gray-200 rounded-2xl"></div>
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Welcome Section */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="bg-gradient-to-r from-indigo-900 to-indigo-700 rounded-2xl p-6 text-white"
-      >
-        <h1 className="text-2xl font-bold font-heading mb-2">
-          Welcome to {shop?.name || 'Your Shop'}!
-        </h1>
-        <p className="text-indigo-100 font-body">
-          Manage your products, track orders, and grow your business with Tokify
-        </p>
-      </motion.div>
+    <div className="p-4 md:p-6 max-w-6xl mx-auto">
+      <h1 className="text-2xl font-bold text-gray-800 mb-6">
+        📊 Dashboard
+      </h1>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          className="bg-white rounded-xl p-6 shadow-sm border border-gray-100"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-orange-50 rounded-lg flex items-center justify-center">
-              <Package className="w-6 h-6 text-orange-600" />
-            </div>
-            <span className="text-2xl font-bold font-heading text-gray-900">
-              {stats.totalProducts}
-            </span>
-          </div>
-          <h3 className="text-gray-600 font-body">Total Products</h3>
-          <p className="text-sm text-gray-500 font-body mt-1">
-            Active items in your catalog
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="bg-gradient-to-br from-orange-400 to-orange-600 text-white rounded-2xl p-4 shadow-sm">
+          <p className="text-orange-100 text-sm">Total Revenue</p>
+          <p className="text-2xl font-bold">
+            ₹{stats?.totalRevenue.toFixed(0) || 0}
           </p>
-        </motion.div>
+          <p className="text-orange-100 text-xs mt-1">All time</p>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="bg-white rounded-xl p-6 shadow-sm border border-gray-100"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
-              <ShoppingCart className="w-6 h-6 text-blue-600" />
-            </div>
-            <span className="text-2xl font-bold font-heading text-gray-900">
-              {stats.totalOrders}
-            </span>
-          </div>
-          <h3 className="text-gray-600 font-body">Total Orders</h3>
-          <p className="text-sm text-gray-500 font-body mt-1">
-            All-time customer orders
+        <div className="bg-gradient-to-br from-blue-400 to-blue-600 text-white rounded-2xl p-4 shadow-sm">
+          <p className="text-blue-100 text-sm">Total Orders</p>
+          <p className="text-2xl font-bold">
+            {stats?.totalOrders || 0}
           </p>
-        </motion.div>
+          <p className="text-blue-100 text-xs mt-1">All time</p>
+        </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.3 }}
-          className="bg-white rounded-xl p-6 shadow-sm border border-gray-100"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div className="w-12 h-12 bg-green-50 rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-6 h-6 text-green-600" />
-            </div>
-            <span className={`text-sm font-semibold font-body px-2 py-1 rounded-full ${
-              stats.activeShop 
-                ? 'text-green-600 bg-green-50' 
-                : 'text-red-600 bg-red-50'
-            }`}>
-              {stats.activeShop ? 'Active' : 'Inactive'}
-            </span>
-          </div>
-          <h3 className="text-gray-600 font-body">Shop Status</h3>
-          <p className="text-sm text-gray-500 font-body mt-1">
-            Your shop is {stats.activeShop ? 'live' : 'offline'}
+        <div className="bg-gradient-to-br from-green-400 to-green-600 text-white rounded-2xl p-4 shadow-sm">
+          <p className="text-green-100 text-sm">Today Revenue</p>
+          <p className="text-2xl font-bold">
+            ₹{stats?.todayRevenue.toFixed(0) || 0}
           </p>
-        </motion.div>
+          <p className="text-green-100 text-xs mt-1">Today</p>
+        </div>
+
+        <div className="bg-gradient-to-br from-purple-400 to-purple-600 text-white rounded-2xl p-4 shadow-sm">
+          <p className="text-purple-100 text-sm">Today Orders</p>
+          <p className="text-2xl font-bold">
+            {stats?.todayOrders || 0}
+          </p>
+          <p className="text-purple-100 text-xs mt-1">Today</p>
+        </div>
       </div>
 
-      {/* Recent Orders */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.4 }}
-        className="bg-white rounded-xl shadow-sm border border-gray-100"
-      >
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold font-heading text-gray-900">
-              Recent Orders
-            </h2>
-            <Link
-              href="/dashboard/orders"
-              className="text-indigo-600 hover:text-indigo-700 font-body text-sm font-medium"
+      {/* Order Status */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm mb-6">
+        <h2 className="font-semibold mb-4">Order Status</h2>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="text-center p-3 bg-yellow-50 rounded-xl">
+            <p className="text-2xl font-bold text-yellow-600">
+              {stats?.pendingOrders || 0}
+            </p>
+            <p className="text-xs text-yellow-600">Pending</p>
+          </div>
+          <div className="text-center p-3 bg-blue-50 rounded-xl">
+            <p className="text-2xl font-bold text-blue-600">
+              {stats?.paidOrders || 0}
+            </p>
+            <p className="text-xs text-blue-600">Paid</p>
+          </div>
+          <div className="text-center p-3 bg-green-50 rounded-xl">
+            <p className="text-2xl font-bold text-green-600">
+              {stats?.fulfilledOrders || 0}
+            </p>
+            <p className="text-xs text-green-600">Fulfilled</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Top Products */}
+      {stats?.topProducts && stats.topProducts.length > 0 && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm mb-6">
+          <h2 className="font-semibold mb-4">🏆 Top Products</h2>
+          {stats.topProducts.map((product, index) => (
+            <div 
+              key={index}
+              className="flex justify-between items-center py-2 border-b last:border-0"
             >
-              View all
-            </Link>
-          </div>
+              <div className="flex items-center gap-2">
+                <span className="text-lg">
+                  {index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉'}
+                </span>
+                <span className="font-medium">{product.name}</span>
+              </div>
+              <span className="text-gray-500 text-sm">
+                {product.quantity} sold
+              </span>
+            </div>
+          ))}
         </div>
-        
-        <div className="p-6">
-          {stats.recentOrders.length > 0 ? (
-            <div className="space-y-4">
-              {stats.recentOrders.map((order: any) => (
-                <div
-                  key={order.id}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <h3 className="font-medium font-heading text-gray-900">
-                        {order.customerName}
-                      </h3>
-                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${getPaymentStatusColor(order.paymentStatus)}`}>
-                        {order.paymentStatus}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 font-body mt-1">
-                      {order.customerPhone} • {new Date(order.createdAt).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold font-heading text-gray-900">
-                      ₹{order.totalAmount.toFixed(2)}
-                    </p>
-                    <div className="flex items-center gap-1 mt-1">
-                      {getPaymentStatusIcon(order.paymentStatus)}
-                      <span className="text-xs text-gray-500 font-body capitalize">
-                        {order.paymentStatus}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <ShoppingCart className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium font-heading text-gray-900 mb-2">
-                No orders yet
-              </h3>
-              <p className="text-gray-600 font-body mb-4">
-                Start by adding products and sharing your QR code
-              </p>
-              <Link
-                href="/dashboard/products"
-                className="inline-flex items-center gap-2 bg-indigo-900 text-white px-4 py-2 rounded-lg font-body hover:bg-indigo-800 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Add Products
-              </Link>
-            </div>
-          )}
+      )}
+
+      {/* Recent Orders */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="font-semibold">Recent Orders</h2>
+          <button
+            onClick={() => router.push('/dashboard/orders')}
+            className="text-orange-500 text-sm font-medium"
+          >
+            View All →
+          </button>
         </div>
-      </motion.div>
-
-      {/* Quick Actions */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, delay: 0.5 }}
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
-      >
-        <Link
-          href="/dashboard/products/new"
-          className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-orange-50 rounded-lg flex items-center justify-center">
-              <Plus className="w-5 h-5 text-orange-600" />
+        {stats?.recentOrders && stats.recentOrders.length > 0 ? (
+          stats.recentOrders.map((order: any) => (
+            <div 
+              key={order.id}
+              className="flex justify-between items-center py-3 border-b last:border-0"
+            >
+              <div>
+                <p className="font-medium text-sm">
+                  {order.customerName || 'Anonymous'}
+                </p>
+                <p className="text-xs text-gray-400">
+                  {new Date(order.createdAt).toLocaleDateString('en-IN')}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="font-bold text-orange-500">
+                  ₹{order.totalAmount.toFixed(0)}
+                </p>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  order.paymentStatus === 'FULFILLED' 
+                    ? 'bg-green-100 text-green-600'
+                    : order.paymentStatus === 'PAID'
+                    ? 'bg-blue-100 text-blue-600'
+                    : 'bg-yellow-100 text-yellow-600'
+                }`}>
+                  {order.paymentStatus}
+                </span>
+              </div>
             </div>
-            <div>
-              <h3 className="font-medium font-heading text-gray-900">Add Product</h3>
-              <p className="text-sm text-gray-600 font-body">New item</p>
-            </div>
+          ))
+        ) : (
+          <div className="text-center py-8 text-gray-400">
+            <p className="text-4xl mb-2">📦</p>
+            <p>No orders yet</p>
           </div>
-        </Link>
-
-        <Link
-          href="/dashboard/qr"
-          className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
-              <Eye className="w-5 h-5 text-blue-600" />
-            </div>
-            <div>
-              <h3 className="font-medium font-heading text-gray-900">View QR</h3>
-              <p className="text-sm text-gray-600 font-body">Shop code</p>
-            </div>
-          </div>
-        </Link>
-
-        <Link
-          href="/dashboard/orders"
-          className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-green-50 rounded-lg flex items-center justify-center">
-              <ShoppingCart className="w-5 h-5 text-green-600" />
-            </div>
-            <div>
-              <h3 className="font-medium font-heading text-gray-900">Orders</h3>
-              <p className="text-sm text-gray-600 font-body">View all</p>
-            </div>
-          </div>
-        </Link>
-
-        <Link
-          href="/dashboard/settings"
-          className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-50 rounded-lg flex items-center justify-center">
-              <Settings className="w-5 h-5 text-purple-600" />
-            </div>
-            <div>
-              <h3 className="font-medium font-heading text-gray-900">Settings</h3>
-              <p className="text-sm text-gray-600 font-body">Configure</p>
-            </div>
-          </div>
-        </Link>
-      </motion.div>
+        )}
+      </div>
     </div>
   )
 }

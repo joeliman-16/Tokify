@@ -1,129 +1,84 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/auth'
 
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
     const session = await auth()
-    
-    if (!session?.user?.id) {
+    console.log('SHOP API SESSION:', JSON.stringify(session))
+
+    if (!session?.user?.email) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Not authenticated' },
         { status: 401 }
       )
     }
 
-    const shops = await prisma.shop.findMany({
-      where: {
-        ownerId: session.user.id
-      },
-      include: {
-        products: {
-          select: {
-            id: true,
-            name: true,
-            price: true,
-            isAvailable: true,
-            quantity: true
-          }
-        },
-        orders: {
-          select: {
-            id: true,
-            totalAmount: true,
-            paymentStatus: true,
-            createdAt: true
-          },
-          orderBy: {
-            createdAt: 'desc'
-          },
-          take: 5
-        }
+    // Get user by email since ID might be missing
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found in database' },
+        { status: 404 }
+      )
+    }
+
+    const body = await request.json()
+    console.log('SHOP BODY:', JSON.stringify(body))
+
+    const shop = await prisma.shop.create({
+      data: {
+        name: body.name,
+        category: body.category,
+        upiId: body.upiId,
+        phone: body.phone,
+        address: body.address,
+        logo: body.logo || null,
+        ownerId: user.id,
+        isActive: true,
       }
     })
 
-    return NextResponse.json(shops)
+    console.log('SHOP CREATED:', shop.id)
+    return NextResponse.json(shop, { status: 201 })
   } catch (error) {
-    console.error('Get shops error:', error)
+    console.error('SHOP CREATE ERROR:', String(error))
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: String(error) },
       { status: 500 }
     )
   }
 }
 
-export async function POST(request: NextRequest) {
-  console.log('=== SHOPS API POST START ===')
-  
+export async function GET(request: NextRequest) {
   try {
     const session = await auth()
-    console.log('SESSION:', JSON.stringify(session, null, 2))
     
-    if (!session?.user?.id) {
-      console.log('❌ NO USER ID IN SESSION')
+    if (!session?.user?.email) {
       return NextResponse.json(
-        { error: 'Not authenticated - session: ' + JSON.stringify(session) },
+        { error: 'Not authenticated' },
         { status: 401 }
       )
     }
 
-    console.log('✅ USER ID FOUND:', session.user.id)
-
-    const body = await request.json()
-    console.log('REQUEST BODY:', JSON.stringify(body, null, 2))
-
-    const { name, category, logo, upiId, phone, address } = body
-
-    if (!name || !category || !upiId || !phone || !address) {
-      console.log('❌ MISSING REQUIRED FIELDS')
-      return NextResponse.json(
-        { error: 'Missing required fields', missing: { name, category, upiId, phone, address } },
-        { status: 400 }
-      )
-    }
-
-    console.log('✅ ALL FIELDS VALID')
-
-    // Check if user already has a shop
-    const existingShop = await prisma.shop.findFirst({
-      where: {
-        ownerId: session.user.id
-      }
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
     })
 
-    if (existingShop) {
-      console.log('❌ USER ALREADY HAS SHOP:', existingShop.id)
-      return NextResponse.json(
-        { error: 'You already have a shop', shopId: existingShop.id },
-        { status: 400 }
-      )
+    if (!user) {
+      return NextResponse.json([], { status: 200 })
     }
 
-    console.log('✅ CREATING NEW SHOP...')
-
-    const shop = await prisma.shop.create({
-      data: {
-        name,
-        category,
-        logo: logo || null,
-        upiId,
-        phone,
-        address,
-        ownerId: session.user.id,
-        qrCode: `https://tokify.vercel.app/shop/${session.user.id}`,
-        isActive: true
-      }
+    const shops = await prisma.shop.findMany({
+      where: { ownerId: user.id },
+      include: { products: true }
     })
 
-    console.log('✅ SHOP CREATED SUCCESSFULLY:', shop.id)
-    console.log('=== SHOPS API POST END ===')
-    
-    return NextResponse.json(shop, { status: 201 })
+    return NextResponse.json(shops)
   } catch (error) {
-    console.error('❌ SHOP ERROR:', String(error))
-    console.error('❌ ERROR STACK:', error instanceof Error ? error.stack : 'No stack trace')
-    console.log('=== SHOPS API POST END ===')
-    
     return NextResponse.json(
       { error: String(error) },
       { status: 500 }

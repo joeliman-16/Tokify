@@ -1,128 +1,94 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/auth'
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/auth'
 
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
     const session = await auth()
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { error: 'Not authenticated' },
         { status: 401 }
       )
     }
 
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email }
+    })
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      )
+    }
+
+    const body = await request.json()
+
     // Get user's shop
     const shop = await prisma.shop.findFirst({
-      where: {
-        ownerId: session.user.id
-      }
+      where: { ownerId: user.id }
     })
 
     if (!shop) {
-      return NextResponse.json([])
+      return NextResponse.json(
+        { error: 'Please create a shop first' },
+        { status: 404 }
+      )
     }
 
-    const products = await prisma.product.findMany({
-      where: {
-        shopId: shop.id
-      },
-      orderBy: {
-        createdAt: 'desc'
+    const product = await prisma.product.create({
+      data: {
+        shopId: body.shopId || shop.id,
+        name: body.name,
+        description: body.description || null,
+        price: Number(body.price),
+        category: body.category,
+        image: body.image || null,
+        isAvailable: body.isAvailable ?? true,
       }
     })
 
-    console.log('✅ PRODUCTS FETCHED SUCCESSFULLY:', products.length)
-    console.log('=== PRODUCTS API GET END ===')
-    
-    return NextResponse.json(products)
+    return NextResponse.json(product, { status: 201 })
   } catch (error) {
-    console.error('❌ PRODUCTS ERROR:', String(error))
-    console.error('❌ PRODUCTS ERROR STACK:', error instanceof Error ? error.stack : 'No stack trace')
-    console.log('=== PRODUCTS API GET END ===')
-    
+    console.error('Product error:', String(error))
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: String(error) },
       { status: 500 }
     )
   }
 }
 
-export async function POST(request: NextRequest) {
-  console.log('=== PRODUCTS API POST START ===')
-  
+export async function GET(request: NextRequest) {
   try {
     const session = await auth()
-    console.log('PRODUCTS SESSION:', JSON.stringify(session, null, 2))
-    
-    if (!session?.user?.id) {
-      console.log('❌ NO USER ID IN PRODUCTS SESSION')
+
+    if (!session?.user?.email) {
       return NextResponse.json(
-        { error: 'Unauthorized - no session' },
+        { error: 'Not authenticated' },
         { status: 401 }
       )
     }
 
-    console.log('✅ PRODUCTS USER ID FOUND:', session.user.id)
-
-    const body = await request.json()
-    console.log('PRODUCTS REQUEST BODY:', JSON.stringify(body, null, 2))
-
-    const { name, description, price, category, image } = body
-
-    console.log('PRODUCTS FIELDS:', { name, description, price, category, hasImage: !!image })
-
-    if (!name || !price || !category) {
-      console.log('❌ MISSING REQUIRED PRODUCT FIELDS')
-      return NextResponse.json(
-        { error: 'Missing required fields: name, price, category are required', missing: { name, price, category } },
-        { status: 400 }
-      )
-    }
-
-    console.log('✅ ALL PRODUCT FIELDS VALID')
-
-    // Get user's shop
-    const shop = await prisma.shop.findFirst({
-      where: { ownerId: session.user.id }
-    })
-
-    if (!shop) {
-      console.log('❌ NO SHOP FOUND FOR USER:', session.user.id)
-      return NextResponse.json(
-        { error: 'Please set up your shop first' },
-        { status: 404 }
-      )
-    }
-
-    console.log('✅ SHOP FOUND:', shop.id)
-
-    // Create product with default quantity 0
-    const product = await prisma.product.create({
-      data: {
-        name,
-        description: description || null,
-        price: parseFloat(price),
-        category,
-        quantity: 0, // Default to 0 for small shops
-        image: image || 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae78?w=400', // Placeholder image
-        shopId: shop.id,
-        isAvailable: true
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      include: {
+        shops: {
+          include: { products: true }
+        }
       }
     })
 
-    console.log('✅ PRODUCT CREATED SUCCESSFULLY:', product.id)
-    console.log('=== PRODUCTS API POST END ===')
-    
-    return NextResponse.json(product, { status: 201 })
+    if (!user) {
+      return NextResponse.json([], { status: 200 })
+    }
+
+    const allProducts = user.shops.flatMap(shop => shop.products)
+    return NextResponse.json(allProducts)
   } catch (error) {
-    console.error('❌ PRODUCTS ERROR:', String(error))
-    console.error('❌ PRODUCTS ERROR STACK:', error instanceof Error ? error.stack : 'No stack trace')
-    console.log('=== PRODUCTS API POST END ===')
-    
     return NextResponse.json(
-      { error: 'Internal server error: ' + (error as Error).message },
+      { error: String(error) },
       { status: 500 }
     )
   }

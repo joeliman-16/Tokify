@@ -8,6 +8,7 @@ interface OrderDetails {
   customerPhone: string | null
   totalAmount: number
   paymentStatus: string
+  paymentId: string | null
   orderItems: {
     id: string
     quantity: number
@@ -172,8 +173,13 @@ export default function ScannerPage() {
               </p>
             )}
             {order.customerPhone && (
-              <p className="text-gray-600 mb-3">
+              <p className="text-gray-600 mb-1">
                 Phone: <strong>{order.customerPhone}</strong>
+              </p>
+            )}
+            {order.paymentId && (
+              <p className="text-gray-600 mb-3">
+                UTR: <strong className="font-mono">{order.paymentId}</strong>
               </p>
             )}
 

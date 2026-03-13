@@ -1,7 +1,13 @@
 'use client'
-import { use, useState } from 'react'
+import { use, useState, useEffect } from 'react'
 import { useCartStore } from '@/store/cart'
 import { useRouter } from 'next/navigation'
+
+declare global {
+  interface Window {
+    Razorpay: any
+  }
+}
 
 export default function CheckoutPage({ 
   params 
@@ -9,26 +15,34 @@ export default function CheckoutPage({
   params: Promise<{ shopId: string }> 
 }) {
   const { shopId } = use(params)
-  const { items, clearCart } = useCartStore()
+  const { items, clearCart, getTotalPrice } = useCartStore()
   const router = useRouter()
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
+  const [customerEmail, setCustomerEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [orderId, setOrderId] = useState('')
-  const [upiLink, setUpiLink] = useState('')
-  const [step, setStep] = useState<'details' | 'payment' | 'confirming'>('details')
-  const [confirmLoading, setConfirmLoading] = useState(false)
-  const [timeLeft, setTimeLeft] = useState(900) // 15 minutes
 
-  const total = items.reduce((sum: number, item: any) => sum + item.price * item.quantity, 0)
+  const total = getTotalPrice ? getTotalPrice() : 
+    items.reduce((sum, item) => sum + item.price * item.quantity, 0)
 
-  const handleCreateOrder = async () => {
+  useEffect(() => {
+    const script = document.createElement('script')
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js'
+    script.async = true
+    document.body.appendChild(script)
+    return () => {
+      document.body.removeChild(script)
+    }
+  }, [])
+
+  const handlePayment = async () => {
     if (items.length === 0) return
     setLoading(true)
     setError('')
+
     try {
-      const response = await fetch('/api/orders/create', {
+      const orderRes = await fetch('/api/orders/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -42,66 +56,70 @@ export default function CheckoutPage({
           customerPhone: customerPhone || null,
         }),
       })
-      const data = await response.json()
-      if (!response.ok) {
-        setError(data.error || 'Failed to create order')
+
+      const orderData = await orderRes.json()
+      if (!orderRes.ok) {
+        setError(orderData.error || 'Failed to create order')
+        setLoading(false)
         return
       }
-      setOrderId(data.orderId)
-      setUpiLink(data.upiLink)
-      setStep('payment')
 
-      // Start countdown timer
-      const timer = setInterval(() => {
-        setTimeLeft(prev => {
-          if (prev <= 1) {
-            clearInterval(timer)
-            return 0
+      const options = {
+        key: orderData.keyId,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'Tokify',
+        description: 'Order Payment',
+        order_id: orderData.razorpayOrderId,
+        prefill: {
+          name: customerName || '',
+          email: customerEmail || '',
+          contact: customerPhone || '',
+        },
+        theme: {
+          color: '#f97316',
+        },
+        handler: async (response: any) => {
+          try {
+            const verifyRes = await fetch('/api/orders/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                orderId: orderData.orderId,
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+              }),
+            })
+            const verifyData = await verifyRes.json()
+            if (!verifyRes.ok) {
+              setError(verifyData.error || 'Payment verification failed')
+              return
+            }
+            clearCart()
+            router.push(
+              `/shop/${shopId}/success?orderId=${orderData.orderId}&token=${verifyData.token}` 
+            )
+          } catch (err) {
+            setError('Payment verification failed')
           }
-          return prev - 1
-        })
-      }, 1000)
+        },
+        modal: {
+          ondismiss: () => {
+            setLoading(false)
+            setError('Payment cancelled')
+          }
+        }
+      }
+
+      const razorpay = new window.Razorpay(options)
+      razorpay.open()
+      setLoading(false)
+
     } catch (err) {
-      setError('Failed to create order. Please try again.')
-    } finally {
+      setError('Something went wrong. Please try again.')
       setLoading(false)
     }
-  }
-
-  const handleUpiPayment = (app: string) => {
-    // Open UPI deep link
-    window.location.href = upiLink
-  }
-
-  const handleConfirmPayment = async () => {
-    setConfirmLoading(true)
-    setError('')
-    try {
-      const response = await fetch('/api/orders/confirm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId }),
-      })
-      const data = await response.json()
-      if (!response.ok) {
-        setError(data.error || 'Failed to confirm payment')
-        return
-      }
-      clearCart()
-      router.push(
-        `/shop/${shopId}/success?orderId=${orderId}&token=${data.token}` 
-      )
-    } catch (err) {
-      setError('Failed to confirm. Please try again.')
-    } finally {
-      setConfirmLoading(false)
-    }
-  }
-
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60).toString().padStart(2, '0')
-    const s = (seconds % 60).toString().padStart(2, '0')
-    return `${m}:${s}` 
   }
 
   if (items.length === 0) {
@@ -111,7 +129,7 @@ export default function CheckoutPage({
           <p className="text-gray-500 mb-4">Your cart is empty</p>
           <button
             onClick={() => router.push(`/shop/${shopId}`)}
-            className="bg-orange-500 text-white px-6 py-2 rounded-lg"
+            className="bg-orange-500 text-white px-6 py-3 rounded-xl font-semibold"
           >
             Back to Shop
           </button>
@@ -124,156 +142,104 @@ export default function CheckoutPage({
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-md mx-auto px-4 py-6">
         
-        {/* Header */}
         <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => router.back()} className="text-gray-600">
-            ← Back
+          <button 
+            onClick={() => router.back()} 
+            className="text-gray-600 text-lg"
+          >
+            ←
           </button>
           <h1 className="text-xl font-bold">Checkout</h1>
         </div>
 
-        {step === 'details' && (
-          <>
-            {/* Order Summary */}
-            <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
-              <h2 className="font-semibold mb-3">Order Summary</h2>
-              {items.map(item => (
-                <div key={item.id} className="flex justify-between py-2 border-b last:border-0">
-                  <span className="text-gray-700">{item.name} x{item.quantity}</span>
-                  <span className="font-medium">₹{(item.price * item.quantity).toFixed(2)}</span>
-                </div>
-              ))}
-              <div className="flex justify-between pt-3 font-bold text-lg">
-                <span>Total</span>
-                <span className="text-orange-500">₹{total.toFixed(2)}</span>
-              </div>
-            </div>
-
-            {/* Customer Details */}
-            <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
-              <h2 className="font-semibold mb-3">Your Details (Optional)</h2>
-              <input
-                type="text"
-                placeholder="Your name"
-                value={customerName}
-                onChange={e => setCustomerName(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 mb-3 focus:outline-none focus:ring-2 focus:ring-orange-400"
-              />
-              <input
-                type="tel"
-                placeholder="Phone number"
-                value={customerPhone}
-                onChange={e => setCustomerPhone(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-400"
-              />
-            </div>
-
-            {error && (
-              <div className="bg-red-50 text-red-600 p-3 rounded-xl mb-4">
-                {error}
-              </div>
-            )}
-
-            <button
-              onClick={handleCreateOrder}
-              disabled={loading}
-              className="w-full bg-orange-500 text-white py-4 rounded-2xl font-bold text-lg disabled:opacity-50"
+        {/* Order Summary */}
+        <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
+          <h2 className="font-semibold mb-3">Order Summary</h2>
+          {items.map(item => (
+            <div 
+              key={item.id} 
+              className="flex justify-between py-2 border-b last:border-0"
             >
-              {loading ? 'Creating Order...' : `Proceed to Pay ₹${total.toFixed(2)}`}
-            </button>
-          </>
+              <span className="text-gray-700">
+                {item.name} x{item.quantity}
+              </span>
+              <span className="font-medium">
+                ₹{(Number(item.price) * Number(item.quantity)).toFixed(2)}
+              </span>
+            </div>
+          ))}
+          <div className="flex justify-between pt-3 font-bold text-lg">
+            <span>Total</span>
+            <span className="text-orange-500">
+              ₹{Number(total).toFixed(2)}
+            </span>
+          </div>
+        </div>
+
+        {/* Customer Details */}
+        <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
+          <h2 className="font-semibold mb-3">
+            Your Details (Optional)
+          </h2>
+          <input
+            type="text"
+            placeholder="Your name"
+            value={customerName}
+            onChange={e => setCustomerName(e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 mb-3 focus:outline-none focus:ring-2 focus:ring-orange-400"
+          />
+          <input
+            type="email"
+            placeholder="Email address"
+            value={customerEmail}
+            onChange={e => setCustomerEmail(e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 mb-3 focus:outline-none focus:ring-2 focus:ring-orange-400"
+          />
+          <input
+            type="tel"
+            placeholder="Phone number"
+            value={customerPhone}
+            onChange={e => setCustomerPhone(e.target.value)}
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-400"
+          />
+        </div>
+
+        {/* Accepted Payments */}
+        <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
+          <p className="text-sm text-gray-500 text-center mb-2">
+            Accepted Payment Methods
+          </p>
+          <div className="flex justify-center gap-4 text-2xl">
+            <span title="UPI">📱</span>
+            <span title="Cards">💳</span>
+            <span title="NetBanking">🏦</span>
+            <span title="Wallets">👛</span>
+          </div>
+          <p className="text-xs text-center text-gray-400 mt-2">
+            UPI • Cards • Net Banking • Wallets
+          </p>
+        </div>
+
+        {error && (
+          <div className="bg-red-50 text-red-600 p-3 rounded-xl mb-4 text-sm">
+            {error}
+          </div>
         )}
 
-        {step === 'payment' && (
-          <>
-            {/* Timer */}
-            <div className="bg-orange-50 border border-orange-200 rounded-2xl p-4 mb-4 text-center">
-              <p className="text-orange-600 font-medium">Complete payment within</p>
-              <p className="text-3xl font-bold text-orange-500">{formatTime(timeLeft)}</p>
-              {timeLeft === 0 && (
-                <p className="text-red-500 text-sm mt-1">Order expired! Please go back and try again.</p>
-              )}
-            </div>
+        <button
+          onClick={handlePayment}
+          disabled={loading}
+          className="w-full bg-orange-500 text-white py-4 rounded-2xl font-bold text-lg disabled:opacity-50 shadow-lg"
+        >
+          {loading 
+            ? 'Opening Payment...' 
+            : `Pay ₹${Number(total).toFixed(2)}` 
+          }
+        </button>
 
-            {/* Order amount */}
-            <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm text-center">
-              <p className="text-gray-500">Amount to pay</p>
-              <p className="text-4xl font-bold text-orange-500">₹{total.toFixed(2)}</p>
-            </div>
-
-            {/* UPI Payment buttons */}
-            <div className="bg-white rounded-2xl p-4 mb-4 shadow-sm">
-              <h2 className="font-semibold mb-4 text-center">Pay with UPI</h2>
-              
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <button
-                  onClick={() => handleUpiPayment('phonepe')}
-                  disabled={timeLeft === 0}
-                  className="flex flex-col items-center gap-2 p-4 border-2 border-purple-200 rounded-2xl hover:bg-purple-50 disabled:opacity-50"
-                >
-                  <span className="text-2xl">💜</span>
-                  <span className="font-medium text-purple-700">PhonePe</span>
-                </button>
-
-                <button
-                  onClick={() => handleUpiPayment('gpay')}
-                  disabled={timeLeft === 0}
-                  className="flex flex-col items-center gap-2 p-4 border-2 border-blue-200 rounded-2xl hover:bg-blue-50 disabled:opacity-50"
-                >
-                  <span className="text-2xl">🔵</span>
-                  <span className="font-medium text-blue-700">Google Pay</span>
-                </button>
-
-                <button
-                  onClick={() => handleUpiPayment('paytm')}
-                  disabled={timeLeft === 0}
-                  className="flex flex-col items-center gap-2 p-4 border-2 border-blue-200 rounded-2xl hover:bg-blue-50 disabled:opacity-50"
-                >
-                  <span className="text-2xl">💙</span>
-                  <span className="font-medium text-blue-600">Paytm</span>
-                </button>
-
-                <button
-                  onClick={() => handleUpiPayment('upi')}
-                  disabled={timeLeft === 0}
-                  className="flex flex-col items-center gap-2 p-4 border-2 border-green-200 rounded-2xl hover:bg-green-50 disabled:opacity-50"
-                >
-                  <span className="text-2xl">💚</span>
-                  <span className="font-medium text-green-700">Other UPI</span>
-                </button>
-              </div>
-
-              <p className="text-xs text-gray-400 text-center">
-                All buttons open your UPI app to complete payment
-              Payment
-            </h2>
-            
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-              <p className="text-orange-800 text-sm">
-                <strong>Test Payment Mode:</strong> This is a mock payment that will always succeed for testing purposes.
-              </p>
-            </div>
-          </div>
-
-          {/* Pay Button */}
-          <button
-            onClick={handlePayment}
-            disabled={isProcessing}
-            className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 text-white py-4 rounded-lg font-semibold transition-colors flex items-center justify-center space-x-2"
-          >
-            {isProcessing ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                <span>Processing Payment...</span>
-              </>
-            ) : (
-              <>
-                <CreditCard className="w-5 h-5" />
-                <span>Pay Now ₹{totalPrice.toFixed(2)}</span>
-              </>
-            )}
-          </button>
-        </motion.div>
+        <p className="text-center text-xs text-gray-400 mt-3">
+          🔒 Secured by Razorpay
+        </p>
       </div>
     </div>
   )

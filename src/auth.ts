@@ -4,7 +4,7 @@ import Google from 'next-auth/providers/google'
 import { prisma } from '@/lib/prisma'
 import bcrypt from 'bcryptjs'
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+const authOptions = {
   session: { strategy: 'jwt' as const },
   secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || 'tokify2024secretkey32charslong!!',
   pages: {
@@ -58,34 +58,46 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (account?.provider === 'google') {
         try {
           const existing = await prisma.user.findUnique({
-            where: { email: user.email! },
+            where: { email: user.email! }
           })
           if (!existing) {
             await prisma.user.create({
               data: {
                 email: user.email!,
                 name: user.name!,
-                image: user.image,
+                image: user.image || null,
                 password: '', // OAuth users don't have passwords
-              },
+              }
             })
           }
         } catch (error) {
-          console.error('Google signin error:', error)
+          console.error('SignIn error:', error)
           return false
         }
       }
       return true
     },
     async jwt({ token, user }: any) {
-      if (user) token.id = user.id
+      if (user?.email) {
+        // Always fetch fresh user ID from DB
+        const dbUser = await prisma.user.findUnique({
+          where: { email: user.email }
+        })
+        if (dbUser) {
+          token.id = dbUser.id
+          token.email = dbUser.email
+        }
+      }
       return token
     },
     async session({ session, token }: any) {
-      if (session.user && token.id) {
+      if (session.user) {
         session.user.id = token.id as string
+        session.user.email = token.email as string
       }
       return session
     },
   },
-})
+}
+
+export const { handlers, auth, signIn, signOut } = NextAuth(authOptions)
