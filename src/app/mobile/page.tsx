@@ -79,31 +79,29 @@ export default function MobileApp() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-2 hover:bg-gray-100 rounded-lg"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-          <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-            <span className="text-white text-xl font-bold">TP</span>
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
+                <span className="text-white text-xl font-bold">TP</span>
+              </div>
+              <span className="text-xl font-bold text-gray-900">Troxpay</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button className="p-2 hover:bg-gray-100 rounded-lg relative">
+                <Bell className="w-5 h-5" />
+                {stats?.pendingOrders && stats.pendingOrders > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">
+                    {stats.pendingOrders}
+                  </span>
+                )}
+              </button>
+              <button className="p-2 hover:bg-gray-100 rounded-lg">
+                <User className="w-5 h-5" />
+              </button>
+            </div>
           </div>
-          <h1 className="text-lg font-bold text-gray-900">Troxpay</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <button className="p-2 hover:bg-gray-100 rounded-lg relative">
-            <Bell className="w-5 h-5" />
-            {stats?.pendingOrders && stats.pendingOrders > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 rounded-full flex items-center justify-center">
-                {stats.pendingOrders}
-              </span>
-            )}
-          </button>
-          <button className="p-2 hover:bg-gray-100 rounded-lg">
-            <User className="w-5 h-5" />
-          </button>
         </div>
       </header>
 
