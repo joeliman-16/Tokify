@@ -87,7 +87,7 @@ export default function MobileApp() {
           >
             <Menu className="w-5 h-5" />
           </button>
-          <h1 className="text-lg font-bold text-gray-900">Tokify</h1>
+          <h1 className="text-lg font-bold text-gray-900">Troxpay</h1>
         </div>
         <div className="flex items-center gap-2">
           <button className="p-2 hover:bg-gray-100 rounded-lg relative">

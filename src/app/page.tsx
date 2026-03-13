@@ -36,7 +36,7 @@ export default function HomePage() {
               <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
                 <Store className="w-6 h-6 text-white" />
               </div>
-              <span className="text-xl font-bold text-gray-900">Tokify</span>
+              <span className="text-xl font-bold text-gray-900">Troxpay</span>
             </div>
             <nav className="hidden md:flex items-center gap-8">
               <Link
@@ -329,7 +329,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div className="col-span-1 md:col-span-2">
-              <h3 className="text-lg font-semibold text-white mb-4">Tokify</h3>
+              <h3 className="text-lg font-semibold text-white mb-4">Troxpay</h3>
               <p className="text-gray-400 text-sm leading-relaxed">
                 The modern payment solution for Indian small businesses. Accept payments, manage orders, and grow your business with confidence.
               </p>
@@ -353,7 +353,7 @@ export default function HomePage() {
           </div>
           <div className="border-t border-gray-800 mt-8 pt-8 text-center">
             <p className="text-sm text-gray-400">
-              © 2026 Tokify. All rights reserved.
+              © 2026 Troxpay. All rights reserved.
             </p>
           </div>
         </div>

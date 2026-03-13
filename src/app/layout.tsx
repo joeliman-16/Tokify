@@ -3,7 +3,7 @@ import "./globals.css";
 import Providers from "@/components/providers";
 
 export const metadata: Metadata = {
-  title: "Tokify - Scan. Pay. Trust.",
+  title: "Troxpay - Scan. Pay. Trust.",
   description: "QR Token System for small Indian businesses",
 };
 

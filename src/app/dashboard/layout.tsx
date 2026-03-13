@@ -127,7 +127,7 @@ export default function DashboardLayout({
             <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
               <span className="text-indigo-900 text-xl font-bold font-heading">T</span>
             </div>
-            <span className="text-white font-bold font-heading">Tokify</span>
+            <span className="text-white font-bold font-heading">Troxpay</span>
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
@@ -165,7 +165,7 @@ export default function DashboardLayout({
           <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
             <span className="text-indigo-900 text-xl font-bold font-heading">T</span>
           </div>
-          <span className="text-white font-bold font-heading">Tokify</span>
+          <span className="text-white font-bold font-heading">Troxpay</span>
         </div>
         
         <nav className="p-4 space-y-2">
