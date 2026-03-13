@@ -125,7 +125,7 @@ export default function DashboardLayout({
         <div className="flex items-center justify-between p-4 border-b border-indigo-700">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-              <span className="text-indigo-900 text-xl font-bold font-heading">T</span>
+              <span className="text-indigo-900 text-xl font-bold font-heading">TP</span>
             </div>
             <span className="text-white font-bold font-heading">Troxpay</span>
           </div>

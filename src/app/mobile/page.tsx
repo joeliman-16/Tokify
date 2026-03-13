@@ -87,6 +87,9 @@ export default function MobileApp() {
           >
             <Menu className="w-5 h-5" />
           </button>
+          <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
+            <span className="text-white text-xl font-bold">TP</span>
+          </div>
           <h1 className="text-lg font-bold text-gray-900">Troxpay</h1>
         </div>
         <div className="flex items-center gap-2">
