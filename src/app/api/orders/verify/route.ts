@@ -4,66 +4,76 @@ import crypto from 'crypto'
 
 export async function POST(request: NextRequest) {
   try {
-    const { orderId, razorpayOrderId, razorpayPaymentId, razorpaySignature } = await request.json()
+    const {
+      orderId,
+      razorpayOrderId,
+      razorpayPaymentId,
+      razorpaySignature,
+    } = await request.json()
 
-    if (!orderId || !razorpayOrderId || !razorpayPaymentId || !razorpaySignature) {
+    console.log('Verifying payment:', {
+      orderId, razorpayOrderId, razorpayPaymentId
+    })
+
+    if (!orderId || !razorpayOrderId || 
+        !razorpayPaymentId || !razorpaySignature) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       )
     }
 
-    // Get order to verify amount
-    const order = await prisma.order.findUnique({
-      where: { id: orderId }
-    })
-
-    if (!order) {
-      return NextResponse.json(
-        { error: 'Order not found' },
-        { status: 404 }
-      )
-    }
-
-    // Verify Razorpay signature
-    const keySecret = process.env.RAZORPAY_KEY_SECRET
-    if (!keySecret) {
-      return NextResponse.json(
-        { error: 'Razorpay key secret not configured' },
-        { status: 500 }
-      )
-    }
-
-    const generatedSignature = crypto
-      .createHmac('sha256', keySecret)
-      .update(`${razorpayOrderId}|${razorpayPaymentId}`)
+    // Verify signature
+    const body = razorpayOrderId + '|' + razorpayPaymentId
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET!)
+      .update(body)
       .digest('hex')
 
-    if (generatedSignature !== razorpaySignature) {
+    if (expectedSignature !== razorpaySignature) {
       return NextResponse.json(
         { error: 'Invalid payment signature' },
         { status: 400 }
       )
     }
 
-    // Update order status
+    // Update order to PAID
     await prisma.order.update({
       where: { id: orderId },
-      data: { 
+      data: {
         paymentStatus: 'PAID',
         paymentId: razorpayPaymentId,
-        upiTransactionNote: `Razorpay Order: ${razorpayOrderId}`
       }
     })
 
-    return NextResponse.json({
-      success: true,
-      message: 'Payment verified successfully'
+    // Generate HMAC token
+    const tokenData = `${orderId}:${razorpayPaymentId}:${Date.now()}` 
+    const token = crypto
+      .createHmac('sha256', 
+        process.env.HMAC_SECRET || 'tokify_hmac_secret_2024'
+      )
+      .update(tokenData)
+      .digest('hex')
+
+    // Save QR token
+    await prisma.orderQRToken.create({
+      data: {
+        orderId,
+        token,
+        isUsed: false,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      }
     })
-  } catch (error) {
-    console.error('Payment verification error:', error)
+
+    console.log('Payment verified, token generated:', 
+      token.slice(0, 8))
+
+    return NextResponse.json({ token, orderId })
+
+  } catch (error: any) {
+    console.error('Verify error:', error)
     return NextResponse.json(
-      { error: 'Failed to verify payment' },
+      { error: error.message || String(error) },
       { status: 500 }
     )
   }
