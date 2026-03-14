@@ -68,7 +68,7 @@ export default function CheckoutPage({
         key: orderData.keyId,
         amount: orderData.amount,
         currency: orderData.currency,
-        name: 'Tokify',
+        name: 'Troxpay',
         description: 'Order Payment',
         order_id: orderData.razorpayOrderId,
         prefill: {
